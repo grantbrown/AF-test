@@ -10,6 +10,8 @@
 #include <iostream>
 #include "caf/all.hpp"
 #include "philosopher.hpp"
+#include <random>
+
 
 using namespace Rcpp;
 using namespace std;
@@ -45,10 +47,18 @@ chopstick::behavior_type taken_chopstick(chopstick::pointer self,
   };
 }
 
-philosopher::philosopher(const std::string& n, const chopstick& l, const chopstick& r)
+philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& l, const chopstick& r)
       : name(n),
+        seed(randomSeed),
         left(l),
         right(r) {
+    // Wake up, philosopher
+    rd = new std::random_device(); // Doesn't use seed, but could instead.    
+    generator = new std::mt19937((*rd)());
+    mealsEaten = 0;
+    thoughtsHad = 0;
+    ultimateAnswer = 0;
+    
     // a philosopher that receives {eat} stops thinking and becomes hungry
     thinking.assign(
       [=](eat_atom) {
@@ -72,9 +82,17 @@ philosopher::philosopher(const std::string& n, const chopstick& l, const chopsti
         aout(this) << name
                    << " has picked up chopsticks with IDs "
                    << left->id() << " and " << right->id()
-                   << " and starts to eat\n";
+                   << " and starts to eat meal " << mealsEaten << "\n";
         // eat some time
-        delayed_send(this, seconds(5), think_atom::value);
+        mealsEaten += 1;
+        if (mealsEaten > 10)
+        {
+            delayed_send(this, seconds(1), leave_atom::value);
+        }
+        else
+        {
+            delayed_send(this, seconds(1), think_atom::value);
+        }
         become(eating);
       },
       [=](busy_atom) {
@@ -100,12 +118,29 @@ philosopher::philosopher(const std::string& n, const chopstick& l, const chopsti
       [=](think_atom) {
         send(left, put_atom::value);
         send(right, put_atom::value);
-        delayed_send(this, seconds(5), eat_atom::value);
+        delayed_send(this, seconds(1), eat_atom::value);
         aout(this) << name << " puts down his chopsticks and starts to think\n";
+        int i;
+        std::poisson_distribution<> d(10);
+        for (i = 0; i < 100; i++)
+        {
+            ultimateAnswer += d(*generator); 
+        }
         become(thinking);
-      }
+      },
+     [=](leave_atom) {
+        aout(this) << "I, " << name << ", have eaten my fill, and discovered" 
+        << " that the ultimate answer is " << ultimateAnswer << "\n";
+        quit();
+      } 
     );
   }
+
+philosopher::~philosopher()
+{
+    delete generator;
+    delete rd;
+}
 
 behavior philosopher::make_behavior(){
     // start thinking
@@ -114,7 +149,7 @@ behavior philosopher::make_behavior(){
     return (
       [=](think_atom) {
         aout(this) << name << " starts to think\n";
-        delayed_send(this, seconds(5), eat_atom::value);
+        delayed_send(this, seconds(1), eat_atom::value);
         become(thinking);
       }
     );

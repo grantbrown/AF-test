@@ -3,10 +3,12 @@
 #include <map>
 #include <vector>
 #include <chrono>
+#include <random>
 #include <sstream>
 #include <Rcpp.h>
 #include <iostream>
 #include "caf/all.hpp"
+
 using std::chrono::seconds;
 using namespace Rcpp;
 using namespace std;
@@ -22,6 +24,7 @@ namespace AFTestNamespace {
     // atoms for philosopher interface
     using eat_atom = atom_constant<atom("eat")>;
     using think_atom = atom_constant<atom("think")>;
+    using leave_atom = atom_constant<atom("leave")>;
 
     typedef typed_actor<replies_to<take_atom>
                 ::with_either<taken_atom>
@@ -34,18 +37,25 @@ namespace AFTestNamespace {
 
     class philosopher : public event_based_actor {
         public:
-            philosopher(const std::string& n, const chopstick& l, const chopstick& r);  
+            philosopher(const std::string& n, int randomSeed, const chopstick& l, const chopstick& r);  
+            ~philosopher();
         protected:
             behavior make_behavior() override;
         private: 
-            std::string name;     // the name of this philosopher
-            chopstick   left;     // left chopstick
-            chopstick   right;    // right chopstick
-            behavior    thinking; // initial behavior
-            behavior    hungry;   // tries to take chopsticks
-            behavior    granted;  // has one chopstick and waits for the second one
-            behavior    denied;   // could not get first chopsticks
-            behavior    eating;   // waits for some time, then go thinking again
+            std::string name;       // the name of this philosopher
+            std::random_device* rd;  // the philosopher's internal random device
+            std::mt19937* generator; // the philosopher's internal random number generator
+            chopstick   left;       // left chopstick
+            chopstick   right;      // right chopstick
+            behavior    thinking;   // initial behavior
+            behavior    hungry;     // tries to take chopsticks
+            behavior    granted;    // has one chopstick and waits for the second one
+            behavior    denied;     // could not get first chopsticks
+            behavior    eating;     // waits for some time, then go thinking again
+            int seed;
+            int mealsEaten;
+            int thoughtsHad;
+            uint64_t ultimateAnswer;
     };
 
 }

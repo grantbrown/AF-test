@@ -49,7 +49,7 @@ class AFTest {
                 names.push_back("Philosopher " + to_string( i ));
               }
               for (size_t i = 0; i < nnodes; ++i) {
-                workers.push_back(spawn<philosopher>(names[i], chopsticks[i], chopsticks[(i + 1) % 5]));
+                workers.push_back(spawn<philosopher>(names[i], i*12312, chopsticks[i], chopsticks[(i + 1) % nnodes]));
               }
 
 
