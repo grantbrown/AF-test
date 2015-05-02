@@ -44,11 +44,12 @@ class AFTest {
               aout(self) << endl;
               // spawn n philosophers
               std::vector<std::string> names; 
+              std::vector<caf::actor> workers;
               for (size_t i = 0; i < nnodes; ++i) {
                 names.push_back("Philosopher " + to_string( i ));
               }
               for (size_t i = 0; i < nnodes; ++i) {
-                spawn<philosopher>(names[i], chopsticks[i], chopsticks[(i + 1) % 5]);
+                workers.push_back(spawn<philosopher>(names[i], chopsticks[i], chopsticks[(i + 1) % 5]));
               }
 
 
