@@ -9,24 +9,14 @@
 #include <Rcpp.h>
 #include <iostream>
 #include "caf/all.hpp"
-using std::chrono::seconds;
+#include "philosopher.hpp"
+
 using namespace Rcpp;
 using namespace std;
 using namespace caf;
-namespace AFTest {
-// atoms for chopstick interface
-using put_atom = atom_constant<atom("put")>;
-using take_atom = atom_constant<atom("take")>;
-using busy_atom = atom_constant<atom("busy")>;
-using taken_atom = atom_constant<atom("taken")>;
-// atoms for philosopher interface
-using eat_atom = atom_constant<atom("eat")>;
-using think_atom = atom_constant<atom("think")>;
-// a chopstick
-using chopstick = typed_actor<replies_to<take_atom>
-                              ::with_either<taken_atom>
-                              ::or_else<busy_atom>,
-                              reacts_to<put_atom>>;
+namespace AFTestNamespace {
+
+// Chopstick Behavior
 chopstick::behavior_type taken_chopstick(chopstick::pointer self, actor_addr);
 // either taken by a philosopher or available
 chopstick::behavior_type available_chopstick(chopstick::pointer self) {
@@ -40,6 +30,7 @@ chopstick::behavior_type available_chopstick(chopstick::pointer self) {
     }
   };
 }
+
 chopstick::behavior_type taken_chopstick(chopstick::pointer self,
                                          actor_addr user) {
   return {
@@ -53,37 +44,8 @@ chopstick::behavior_type taken_chopstick(chopstick::pointer self,
     }
   };
 }
-/* Based on: http://www.dalnefre.com/wp/2010/08/dining-philosophers-in-humus/
- *
- *
- *                +-------------+     {busy|taken}
- *      /-------->|  thinking   |<------------------\
- *      |         +-------------+                   |
- *      |                |                          |
- *      |                | {eat}                    |
- *      |                |                          |
- *      |                V                          |
- *      |         +-------------+  {busy}    +-------------+
- *      |         |   hungry    |----------->|   denied    |
- *      |         +-------------+            +-------------+
- *      |                |
- *      |                | {taken}
- *      |                |
- *      |                V
- *      |         +-------------+
- *      |         |   granted   |
- *      |         +-------------+
- *      |           |    |
- *      |  {busy}   |    | {taken}
- *      \-----------/    |
- *      |                V
- *      | {think} +-------------+
- *      \---------|   eating    |
- *                +-------------+
- */
-class philosopher : public event_based_actor {
- public:
-  philosopher(const std::string& n, const chopstick& l, const chopstick& r)
+
+philosopher::philosopher(const std::string& n, const chopstick& l, const chopstick& r)
       : name(n),
         left(l),
         right(r) {
@@ -144,8 +106,8 @@ class philosopher : public event_based_actor {
       }
     );
   }
- protected:
-  behavior make_behavior() override {
+
+behavior philosopher::make_behavior(){
     // start thinking
     send(this, think_atom::value);
     // philosophers start to think after receiving {think}
@@ -157,35 +119,5 @@ class philosopher : public event_based_actor {
       }
     );
   }
- private:
-  std::string name;     // the name of this philosopher
-  chopstick   left;     // left chopstick
-  chopstick   right;    // right chopstick
-  behavior    thinking; // initial behavior
-  behavior    hungry;   // tries to take chopsticks
-  behavior    granted;  // has one chopstick and waits for the second one
-  behavior    denied;   // could not get first chopsticks
-  behavior    eating;   // waits for some time, then go thinking again
-};
-
-void dining_philosophers(int n) {
-  scoped_actor self;
-  // create five chopsticks
-  aout(self) << "chopstick ids are:";
-  std::vector<chopstick> chopsticks;
-  for (size_t i = 0; i < n; ++i) {
-    chopsticks.push_back(spawn_typed(available_chopstick));
-    aout(self) << " " << chopsticks.back()->id();
-  }
-  aout(self) << endl;
-  // spawn n philosophers
-  std::vector<std::string> names; 
-  for (size_t i = 0; i < n; ++i) {
-  	names.push_back("Philosopher " + to_string( i ));
-  }
-  for (size_t i = 0; i < n; ++i) {
-    spawn<philosopher>(names[i], chopsticks[i], chopsticks[(i + 1) % 5]);
-  }
-}
 }
 
