@@ -131,6 +131,8 @@ philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& 
      [=](leave_atom) {
         aout(this) << "I, " << name << ", have eaten my fill, and discovered" 
         << " that the ultimate answer is " << ultimateAnswer << "\n";
+        send(left, put_atom::value);
+        send(right, put_atom::value);
         quit();
       } 
     );
