@@ -57,7 +57,19 @@ class AFTest {
               
               Rcpp::Rcout << "Philosophers created.\n";
 
-              i=0; 
+              size_t received = 0;
+              self -> do_receive(
+                on<uint64_t>() >> [&](uint64_t value1){
+                    results.push_back(value1);
+                    received++;
+                    Rcpp::Rcout << "The host has received result: " << value1 << "\n";                       
+                },
+                others >> [&](){
+                    Rcpp::Rcout << "Other message received\n";                    
+                }
+              ).until([&]{return received >= n;});
+
+              /*
               self -> receive_loop(
                         on<uint64_t>() >> [&](uint64_t value1){
                             results.push_back(value1);
@@ -70,25 +82,22 @@ class AFTest {
                             aout(self) << "Other message received\n";                    
                         }
                       );
+              */
             
-              Rcpp::Rcout << "All of the philosophers have left the building. Here are their answers: \n";
+              Rcpp::Rcout << "Tell the philosophers to go home. \n";
               for (i = 0; i < results.size(); i++)
               {
                   Rcpp::Rcout << "Philospher " << i << " obtained: " << results[i] << "\n";
+                  self -> send((workers[i]), leave_atom::value);
+                      
+              }
+              Rcpp::Rcout << "Put away the chopsticks.\n";
+              for (i = 0; i < chopsticks.size(); i++)
+              {
+                  self -> send((chopsticks[i]), wash_atom::value);
               }
 
 
-
-              // Block until all done, or interrupt received
-              // Not currently working
-              signal(SIGTERM, [](int signum) { Rcpp::Rcout << "SIGTERM\n";
-                                             caf::shutdown(); 
-                                             });
-              signal(SIGKILL, [](int signum) {  Rcpp::Rcout << "SIGKILL\n";
-                                             caf::shutdown(); 
-                                             });
-
-              await_all_actors_done();
               Rcpp::Rcout << "Dining Philosophers Return\n";
             }
             catch (std::exception &ex)
@@ -99,6 +108,8 @@ class AFTest {
             catch (...){
                 ::Rf_error("c++ exception (unknown reason)");
             }
+            await_all_actors_done();
+            shutdown();
         }
     private:
         int nnodes;

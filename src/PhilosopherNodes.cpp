@@ -27,6 +27,10 @@ chopstick::behavior_type available_chopstick(chopstick::pointer self) {
       self->become(taken_chopstick(self, self->current_sender()));
       return taken_atom::value;
     },
+    [=](wash_atom) {
+        aout(self) << "(washing chopstick " << self -> id() << ")\n";
+        self->quit();
+    },
     [](put_atom) {
       cerr << "chopstick received unexpected 'put'" << endl;
     }
@@ -38,6 +42,9 @@ chopstick::behavior_type taken_chopstick(chopstick::pointer self,
   return {
     [](take_atom) {
       return busy_atom::value;
+    },
+    [](wash_atom) {
+        cerr << "chopstick received unexpected 'wash'" << endl;
     },
     [=](put_atom) {
       if (self->current_sender() == user) {
@@ -123,9 +130,9 @@ philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& 
         aout(this) << name << " puts down his chopsticks and starts to think\n";
         int i;
         std::poisson_distribution<> d(10);
-        for (i = 0; i < 10000; i++)
+        for (i = 0; i < 1000000; i++)
         {
-            ultimateAnswer += d(*generator); 
+            ultimateAnswer += (d(*generator) % 17 + 12)/2 % 5; 
         }
         become(thinking);
       },
@@ -135,8 +142,14 @@ philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& 
         send(left, put_atom::value);
         send(right, put_atom::value);
         send(parent, ultimateAnswer);
-        //quit();
+        become(leaving);
       } 
+    );
+    leaving.assign(
+        [=](leave_atom){
+            aout(this) << "Fine, I'll leave. (" << name << " exits)\n";
+            this -> quit();
+        }
     );
   }
 
