@@ -37,7 +37,7 @@ namespace AFTestNamespace {
 
     class philosopher : public event_based_actor {
         public:
-            philosopher(const std::string& n, int randomSeed, const chopstick& l, const chopstick& r);  
+            philosopher(const std::string& n, int randomSeed, const chopstick& l, const chopstick& r, actor p);  
             ~philosopher();
         protected:
             behavior make_behavior() override;
@@ -56,6 +56,7 @@ namespace AFTestNamespace {
             int mealsEaten;
             int thoughtsHad;
             uint64_t ultimateAnswer;
+            actor parent;
     };
 
 }

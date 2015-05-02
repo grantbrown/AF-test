@@ -31,13 +31,15 @@ class AFTest {
         {
             try
             {
+            
               Rcpp::Rcout << "Dining Philosophers Start\n";
-
+              const long unsigned int n = nnodes; 
               scoped_actor self;
               // create five chopsticks
               aout(self) << "chopstick ids are:";
               std::vector<chopstick> chopsticks;
-              for (size_t i = 0; i < nnodes; ++i) {
+              size_t i;
+              for (i = 0; i < n; ++i) {
                 chopsticks.push_back(spawn_typed(available_chopstick));
                 aout(self) << " " << chopsticks.back()->id();
               }
@@ -45,12 +47,36 @@ class AFTest {
               // spawn n philosophers
               std::vector<std::string> names; 
               std::vector<caf::actor> workers;
-              for (size_t i = 0; i < nnodes; ++i) {
+              std::vector<uint64_t> results;
+              for (i = 0; i < n; ++i) {
                 names.push_back("Philosopher " + to_string( i ));
               }
-              for (size_t i = 0; i < nnodes; ++i) {
-                workers.push_back(spawn<philosopher>(names[i], i*12312, chopsticks[i], chopsticks[(i + 1) % nnodes]));
+              for (i = 0; i < n; ++i) {
+                workers.push_back(self -> spawn<philosopher, monitored>(names[i], i*12312, chopsticks[i], chopsticks[(i + 1) % n], self));
               }
+              
+              Rcpp::Rcout << "Philosophers created.\n";
+
+              i=0; 
+              self -> receive_loop(
+                        on<uint64_t>() >> [&](uint64_t value1){
+                            results.push_back(value1);
+                            aout(self) << "The host has received result: " << value1 << "\n";                       
+                            if (results.size() >= n){
+                                // break here?
+                            }
+                        },
+                        others >> [&](){
+                            aout(self) << "Other message received\n";                    
+                        }
+                      );
+            
+              Rcpp::Rcout << "All of the philosophers have left the building. Here are their answers: \n";
+              for (i = 0; i < results.size(); i++)
+              {
+                  Rcpp::Rcout << "Philospher " << i << " obtained: " << results[i] << "\n";
+              }
+
 
 
               // Block until all done, or interrupt received

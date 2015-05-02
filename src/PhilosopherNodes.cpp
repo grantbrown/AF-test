@@ -47,11 +47,12 @@ chopstick::behavior_type taken_chopstick(chopstick::pointer self,
   };
 }
 
-philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& l, const chopstick& r)
+philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& l, const chopstick& r, const actor p)
       : name(n),
         seed(randomSeed),
         left(l),
-        right(r) {
+        right(r),
+        parent(p){
     // Wake up, philosopher
     rd = new std::random_device(); // Doesn't use seed, but could instead.    
     generator = new std::mt19937((*rd)());
@@ -87,11 +88,11 @@ philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& 
         mealsEaten += 1;
         if (mealsEaten > 10)
         {
-            delayed_send(this, seconds(1), leave_atom::value);
+            send(this, leave_atom::value);
         }
         else
         {
-            delayed_send(this, seconds(1), think_atom::value);
+            send(this, think_atom::value);
         }
         become(eating);
       },
@@ -118,11 +119,11 @@ philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& 
       [=](think_atom) {
         send(left, put_atom::value);
         send(right, put_atom::value);
-        delayed_send(this, seconds(1), eat_atom::value);
+        send(this, eat_atom::value);
         aout(this) << name << " puts down his chopsticks and starts to think\n";
         int i;
         std::poisson_distribution<> d(10);
-        for (i = 0; i < 100; i++)
+        for (i = 0; i < 10000; i++)
         {
             ultimateAnswer += d(*generator); 
         }
@@ -133,7 +134,8 @@ philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& 
         << " that the ultimate answer is " << ultimateAnswer << "\n";
         send(left, put_atom::value);
         send(right, put_atom::value);
-        quit();
+        send(parent, ultimateAnswer);
+        //quit();
       } 
     );
   }
@@ -151,7 +153,7 @@ behavior philosopher::make_behavior(){
     return (
       [=](think_atom) {
         aout(this) << name << " starts to think\n";
-        delayed_send(this, seconds(1), eat_atom::value);
+        send(this, eat_atom::value);
         become(thinking);
       }
     );
