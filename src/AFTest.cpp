@@ -2,8 +2,6 @@
 #include <philosopher.hpp>
 #include "caf/all.hpp"
 #include <signal.h> 
-#include <mutex>
-#include <condition_variable>
 
 using namespace Rcpp;
 using namespace caf;
@@ -30,8 +28,7 @@ class AFTest {
         void runPhilosophers()
         {
             try
-            {
-            
+            {            
               Rcpp::Rcout << "Dining Philosophers Start\n";
               const long unsigned int n = nnodes; 
               scoped_actor self;
@@ -54,7 +51,13 @@ class AFTest {
               for (i = 0; i < n; ++i) {
                 workers.push_back(self -> spawn<philosopher, monitored>(names[i], i*12312, chopsticks[i], chopsticks[(i + 1) % n], self));
               }
-              
+
+              signal(SIGTERM, [](int signum) { Rcpp::Rcout << "SIGTERM\n";
+                caf::shutdown(); 
+              });
+              signal(SIGKILL, [](int signum) {  Rcpp::Rcout << "SIGKILL\n";
+                caf::shutdown(); 
+              });
               Rcpp::Rcout << "Philosophers created.\n";
 
               size_t received = 0;

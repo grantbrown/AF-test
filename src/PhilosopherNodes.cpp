@@ -132,6 +132,7 @@ philosopher::philosopher(const std::string& n, int randomSeed, const chopstick& 
         std::poisson_distribution<> d(10);
         for (i = 0; i < 1000000; i++)
         {
+            // Do some meaningless computation
             ultimateAnswer += (d(*generator) % 17 + 12)/2 % 5; 
         }
         become(thinking);
