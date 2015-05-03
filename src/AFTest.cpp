@@ -31,16 +31,16 @@ class AFTest {
             {            
               Rcpp::Rcout << "Dining Philosophers Start\n";
               const long unsigned int n = nnodes; 
-              scoped_actor self;
+              self = new scoped_actor();
               // create five chopsticks
-              aout(self) << "chopstick ids are:";
+              aout(*self) << "chopstick ids are:";
               std::vector<chopstick> chopsticks;
               size_t i;
               for (i = 0; i < n; ++i) {
                 chopsticks.push_back(spawn_typed(available_chopstick));
-                aout(self) << " " << chopsticks.back()->id();
+                aout(*self) << " " << chopsticks.back()->id();
               }
-              aout(self) << endl;
+              aout(*self) << endl;
               // spawn n philosophers
               std::vector<std::string> names; 
               std::vector<caf::actor> workers;
@@ -49,7 +49,7 @@ class AFTest {
                 names.push_back("Philosopher " + to_string( i ));
               }
               for (i = 0; i < n; ++i) {
-                workers.push_back(self -> spawn<philosopher, monitored>(names[i], i*12312, chopsticks[i], chopsticks[(i + 1) % n], self));
+                workers.push_back((*self) -> spawn<philosopher, monitored>(names[i], i*12312, chopsticks[i], chopsticks[(i + 1) % n], (*self)));
               }
 
               signal(SIGTERM, [](int signum) { Rcpp::Rcout << "SIGTERM\n";
@@ -61,7 +61,7 @@ class AFTest {
               Rcpp::Rcout << "Philosophers created.\n";
 
               size_t received = 0;
-              self -> do_receive(
+              (*self) -> do_receive(
                 on<uint64_t>() >> [&](uint64_t value1){
                     results.push_back(value1);
                     received++;
@@ -72,32 +72,18 @@ class AFTest {
                 }
               ).until([&]{return received >= n;});
 
-              /*
-              self -> receive_loop(
-                        on<uint64_t>() >> [&](uint64_t value1){
-                            results.push_back(value1);
-                            aout(self) << "The host has received result: " << value1 << "\n";                       
-                            if (results.size() >= n){
-                                // break here?
-                            }
-                        },
-                        others >> [&](){
-                            aout(self) << "Other message received\n";                    
-                        }
-                      );
-              */
-            
+           
               Rcpp::Rcout << "Tell the philosophers to go home. \n";
               for (i = 0; i < results.size(); i++)
               {
                   Rcpp::Rcout << "Philospher " << i << " obtained: " << results[i] << "\n";
-                  self -> send((workers[i]), leave_atom::value);
+                  (*self) -> send((workers[i]), leave_atom::value);
                       
               }
               Rcpp::Rcout << "Put away the chopsticks.\n";
               for (i = 0; i < chopsticks.size(); i++)
               {
-                  self -> send((chopsticks[i]), wash_atom::value);
+                  (*self) -> send((chopsticks[i]), wash_atom::value);
               }
 
 
@@ -111,11 +97,13 @@ class AFTest {
             catch (...){
                 ::Rf_error("c++ exception (unknown reason)");
             }
+            delete self;
             await_all_actors_done();
             shutdown();
         }
     private:
         int nnodes;
+        scoped_actor* self;
 };
 
 RCPP_MODULE(AFTest){
